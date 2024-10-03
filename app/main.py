@@ -1,7 +1,7 @@
 import socket  # noqa: F401
 
 def id_to_bytes(id):
-    return id.to_bytes(8)
+    return id.to_bytes(8, byteorder='big')
 
 
 def main():
