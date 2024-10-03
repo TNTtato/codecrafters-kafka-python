@@ -1,6 +1,41 @@
 import socket  # noqa: F401
 import json
 
+REQUEST_LENGTH = "request_length" 
+REQUEST_API_KEY = "request_api_key" 
+REQUEST_API_VERSION = "request_api_version" 
+CORRELATION_ID = "correlation_id" 
+
+UNSUPPORTED_VALUE = int.to_bytes(35, 2)
+MIN_API_VERSION = int.to_bytes(0, 2, signed=True)
+MAX_API_VERSION = int.to_bytes(4, 2, signed=True)
+
+def parse_request(req):
+    request_length = req[0:4]
+    request_api_key = req[4:6]
+    request_api_version	= req[6:8]
+    correlation_id = req[8:12]
+
+    return {
+        REQUEST_LENGTH : request_length,
+        REQUEST_API_KEY : request_api_key,
+        REQUEST_API_VERSION : request_api_version,
+        CORRELATION_ID: correlation_id
+    }
+
+def validate_api_version(api_version):
+    return api_version >= MAX_API_VERSION and api_version <= MAX_API_VERSION
+
+def build_message(parsed_req) :
+    
+    message = parsed_req[CORRELATION_ID]
+
+    if(not validate_api_version(parsed_req[REQUEST_API_VERSION])):
+        message += UNSUPPORTED_VALUE
+
+    return len(message).to_bytes(4) + message
+
+
 def main():
     
     print("Logs from your program will appear here!")
@@ -11,12 +46,9 @@ def main():
         client, cli_addr = server.accept() # wait for client
         
         req = client.recv(2048)
-        correlation_id = req[8:12]
-        message_length = len(correlation_id).to_bytes(4, byteorder='big')
-
-        message = message_length + correlation_id
+        ps = parse_request(req)
+        message = build_message(ps)
         print(message)
-        
         client.sendall(message)
         client.close()
 
