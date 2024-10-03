@@ -1,5 +1,5 @@
 import socket  # noqa: F401
-import json
+import threading
 
 REQUEST_LENGTH = "request_length" 
 REQUEST_API_KEY = "request_api_key" 
@@ -58,23 +58,30 @@ def build_message(parsed_req) :
 
     return len(message).to_bytes(4) + message
 
+def handle_sockets(client):
+    req = client.recv(2048)
+    ps = parse_request(req)
+    message = build_message(ps)
+    print(message)
+    client.send(message)
+    client.close()
+
+def handle_server(addr, port):
+    server = socket.create_server((addr, port), reuse_port=True)
+    
+    while (True):
+        client, cli_addr = server.accept() # wait for client    
+        t1 = threading.Thread(target=handle_sockets, args=(client,))
+        t1.start()
 
 def main():
     
+    t = threading.Thread(target=handle_server, args=("localhost", 9092))
+    t.start()
+    
     print("Logs from your program will appear here!")
 
-    server = socket.create_server(("localhost", 9092), reuse_port=True)
-    client, cli_addr = server.accept() # wait for client
-
-
-    while (True):
-        
-        req = client.recv(2048)
-        ps = parse_request(req)
-        message = build_message(ps)
-        print(message)
-        client.sendall(message)
-        #client.close()
+    
 
 
 if __name__ == "__main__":
