@@ -12,7 +12,10 @@ def main():
 
     while (True):
         client, addr = server.accept() # wait for client
-        client.send(id_to_bytes(7))
+        message = id_to_bytes(7)
+        print(message)
+        client.recv(1024)
+        client.sendall(message)
         client.close()
 
 
