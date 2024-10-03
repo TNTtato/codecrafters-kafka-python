@@ -9,6 +9,9 @@ CORRELATION_ID = "correlation_id"
 UNSUPPORTED_VALUE = int.to_bytes(35, 2)
 MIN_API_VERSION = int.to_bytes(0, 2, signed=True)
 MAX_API_VERSION = int.to_bytes(4, 2, signed=True)
+DEFAULT_TAG_BUFFER = int.to_bytes(0, 2, signed=True)
+
+ERROR_CODE_ZERO = int.to_bytes(0, 2, signed=True)
 
 def parse_request(req):
     request_length = req[0:4]
@@ -26,12 +29,32 @@ def parse_request(req):
 def validate_api_version(api_version):
     return api_version >= MAX_API_VERSION and api_version <= MAX_API_VERSION
 
-def build_message(parsed_req) :
-    
-    message = parsed_req[CORRELATION_ID]
+def build_message_body(parsed_req):
+    throttle_time_ms = int.to_bytes(0, 4, signed=True)
+    error_code = (
+        ERROR_CODE_ZERO 
+        if validate_api_version(parsed_req[REQUEST_API_VERSION]) 
+        else UNSUPPORTED_VALUE
+    )
 
-    if(not validate_api_version(parsed_req[REQUEST_API_VERSION])):
-        message += UNSUPPORTED_VALUE
+    return (
+        error_code + 
+        int.to_bytes(2, 1) + #num_of_api_keys => INT8
+        parsed_req[REQUEST_API_KEY] + 
+        MIN_API_VERSION + 
+        MAX_API_VERSION + 
+        throttle_time_ms + 
+        DEFAULT_TAG_BUFFER
+    )
+
+
+def build_message(parsed_req) :
+
+    response_header = parsed_req[CORRELATION_ID]
+
+    response_body = build_message_body(parsed_req)
+
+    message = response_header + response_body
 
     return len(message).to_bytes(4) + message
 
