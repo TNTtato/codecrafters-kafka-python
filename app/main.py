@@ -1,8 +1,5 @@
 import socket  # noqa: F401
-
-def id_to_bytes(id):
-    return id.to_bytes(8, byteorder='big')
-
+import json
 
 def main():
     
@@ -11,10 +8,15 @@ def main():
     server = socket.create_server(("localhost", 9092), reuse_port=True)
 
     while (True):
-        client, addr = server.accept() # wait for client
-        message = id_to_bytes(7)
+        client, cli_addr = server.accept() # wait for client
+        
+        req = client.recv(2048)
+        correlation_id = req[8:12]
+        message_length = len(correlation_id).to_bytes(4, byteorder='big')
+
+        message = message_length + correlation_id
         print(message)
-        client.recv(1024)
+        
         client.sendall(message)
         client.close()
 
