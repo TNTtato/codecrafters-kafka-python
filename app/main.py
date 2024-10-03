@@ -64,16 +64,17 @@ def main():
     print("Logs from your program will appear here!")
 
     server = socket.create_server(("localhost", 9092), reuse_port=True)
+    client, cli_addr = server.accept() # wait for client
+
 
     while (True):
-        client, cli_addr = server.accept() # wait for client
         
         req = client.recv(2048)
         ps = parse_request(req)
         message = build_message(ps)
         print(message)
         client.sendall(message)
-        client.close()
+        #client.close()
 
 
 if __name__ == "__main__":
