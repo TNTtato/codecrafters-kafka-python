@@ -58,26 +58,29 @@ def build_message(parsed_req) :
 
     return len(message).to_bytes(4) + message
 
-def handle_sockets(client):
-    req = client.recv(2048)
-    ps = parse_request(req)
-    message = build_message(ps)
-    print(message)
-    client.send(message)
-    client.close()
+def handle_client(client):
+    while True:
+        req = client.recv(2048)
+        ps = parse_request(req)
+        message = build_message(ps)
+        print(message)
+        client.send(message)
+        #client.close()
 
 def handle_server(addr, port):
     server = socket.create_server((addr, port), reuse_port=True)
     
     while (True):
         client, cli_addr = server.accept() # wait for client    
-        t1 = threading.Thread(target=handle_sockets, args=(client,))
-        t1.start()
+        client_thread = threading.Thread(target=handle_client, args=(client,))
+        client_thread.start()
+        
 
 def main():
     
-    t = threading.Thread(target=handle_server, args=("localhost", 9092))
-    t.start()
+    #t = threading.Thread(target=handle_server, args=("localhost", 9092))
+    #t.start()
+    handle_server("localhost", 9092)
     
     print("Logs from your program will appear here!")
 
