@@ -6,10 +6,20 @@ REQUEST_API_KEY = "request_api_key"
 REQUEST_API_VERSION = "request_api_version" 
 CORRELATION_ID = "correlation_id" 
 
-UNSUPPORTED_VALUE = int.to_bytes(35, 2)
+# API Keys
+
+FETCH = int.to_bytes(1, 2, signed=True)
+API_VERSION = int.to_bytes(18, 2, signed=True)
+
+UNSUPPORTED_VALUE = int.to_bytes(35, 2, signed=True)
+
+#Versions
 MIN_API_VERSION = int.to_bytes(0, 2, signed=True)
 MAX_API_VERSION = int.to_bytes(4, 2, signed=True)
-DEFAULT_TAG_BUFFER = int.to_bytes(0, 2, signed=True)
+MIN_FETCH_VERSION = int.to_bytes(0, 2, signed=True)
+MAX_FETCH_VERSION = int.to_bytes(18, 2, signed=True)
+
+DEFAULT_TAG_BUFFER = int.to_bytes(0, 1, signed=True)
 
 ERROR_CODE_ZERO = int.to_bytes(0, 2, signed=True)
 
@@ -39,10 +49,15 @@ def build_message_body(parsed_req):
 
     return (
         error_code + 
-        int.to_bytes(2, 1) + #num_of_api_keys => INT8
+        int.to_bytes(3, 1) + #num_of_api_keys => INT8
         parsed_req[REQUEST_API_KEY] + 
         MIN_API_VERSION + 
-        MAX_API_VERSION + 
+        MAX_API_VERSION +
+        DEFAULT_TAG_BUFFER +
+        FETCH +
+        MIN_FETCH_VERSION +
+        MAX_FETCH_VERSION +
+        DEFAULT_TAG_BUFFER +
         throttle_time_ms + 
         DEFAULT_TAG_BUFFER
     )
