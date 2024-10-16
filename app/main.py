@@ -14,10 +14,17 @@ API_VERSION = int.to_bytes(18, 2, signed=True)
 UNSUPPORTED_VALUE = int.to_bytes(35, 2, signed=True)
 
 #Versions
+
+
 MIN_API_VERSION = int.to_bytes(0, 2, signed=True)
 MAX_API_VERSION = int.to_bytes(4, 2, signed=True)
 MIN_FETCH_VERSION = int.to_bytes(0, 2, signed=True)
-MAX_FETCH_VERSION = int.to_bytes(18, 2, signed=True)
+MAX_FETCH_VERSION = int.to_bytes(16, 2, signed=True)
+
+min_max_versions = {
+    FETCH: [MIN_FETCH_VERSION, MAX_FETCH_VERSION], # api key : 1
+    API_VERSION: [MIN_API_VERSION, MAX_API_VERSION] # api key: 18
+}
 
 DEFAULT_TAG_BUFFER = int.to_bytes(0, 1, signed=True)
 
@@ -36,14 +43,18 @@ def parse_request(req):
         CORRELATION_ID: correlation_id
     }
 
-def validate_api_version(api_version):
-    return api_version >= MAX_API_VERSION and api_version <= MAX_API_VERSION
+def validate_api_version(api_key, api_version):
+    min_max = min_max_versions[api_key]
+    return api_version >= min_max[0] and api_version <= min_max[1]
 
-def build_message_body(parsed_req):
+def build_response_header_v1(parsed_req):
+    return parsed_req[CORRELATION_ID] + DEFAULT_TAG_BUFFER
+
+def build_response_api_versions(parsed_req):
     throttle_time_ms = int.to_bytes(0, 4, signed=True)
     error_code = (
         ERROR_CODE_ZERO 
-        if validate_api_version(parsed_req[REQUEST_API_VERSION]) 
+        if validate_api_version(parsed_req[REQUEST_API_KEY], parsed_req[REQUEST_API_VERSION]) 
         else UNSUPPORTED_VALUE
     )
 
@@ -62,10 +73,21 @@ def build_message_body(parsed_req):
         DEFAULT_TAG_BUFFER
     )
 
+def build_response_fetch(parsed_req):
+    return int.to_bytes(0, 8, signed=True)
+
+def build_message_body(parsed_req):
+    #TODO build proper messages based on request [api key, api version] 
+    api_key = parsed_req[REQUEST_API_KEY]
+
+    if api_key == API_VERSION:
+        return build_response_api_versions(parsed_req)
+    if api_key == FETCH:
+        return build_response_fetch(parsed_req)
 
 def build_message(parsed_req) :
 
-    response_header = parsed_req[CORRELATION_ID]
+    response_header = build_response_header_v1(parsed_req)
 
     response_body = build_message_body(parsed_req)
 
@@ -96,8 +118,6 @@ def main():
     #t = threading.Thread(target=handle_server, args=("localhost", 9092))
     #t.start()
     handle_server("localhost", 9092)
-    
-    print("Logs from your program will appear here!")
 
     
 
