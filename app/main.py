@@ -48,8 +48,8 @@ def validate_api_version(api_key, api_version):
     min_max = min_max_versions[api_key]
     return api_version >= min_max[0] and api_version <= min_max[1]
 
-def build_response_header_v1(parsed_req):
-    return parsed_req[CORRELATION_ID] + DEFAULT_TAG_BUFFER
+def build_response_header(parsed_req):
+    return parsed_req[CORRELATION_ID] + DEFAULT_TAG_BUFFER if parsed_req[REQUEST_API_KEY] == FETCH else parsed_req[CORRELATION_ID]
 
 def build_response_api_versions(parsed_req):
     throttle_time_ms = int.to_bytes(0, 4, signed=True)
@@ -129,7 +129,7 @@ def build_message_body(parsed_req):
 
 def build_message(parsed_req) :
 
-    response_header = build_response_header_v1(parsed_req)
+    response_header = build_response_header(parsed_req)
 
     response_body = build_message_body(parsed_req)
 
