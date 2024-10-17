@@ -1,5 +1,6 @@
 import socket  # noqa: F401
 import threading
+import uuid
 
 REQUEST_LENGTH = "request_length" 
 REQUEST_API_KEY = "request_api_key" 
@@ -61,7 +62,7 @@ def build_response_api_versions(parsed_req):
     return (
         error_code + 
         int.to_bytes(3, 1) + #num_of_api_keys => INT8
-        parsed_req[REQUEST_API_KEY] + 
+        API_VERSION + 
         MIN_API_VERSION + 
         MAX_API_VERSION +
         DEFAULT_TAG_BUFFER +
@@ -73,8 +74,49 @@ def build_response_api_versions(parsed_req):
         DEFAULT_TAG_BUFFER
     )
 
+def build_reponse_fetch_v16(parsed_req):
+    '''
+    Fetch Response (Version: 16) => throttle_time_ms error_code session_id [responses] TAG_BUFFER 
+    throttle_time_ms => INT32
+    error_code => INT16
+    session_id => INT32
+    responses => topic_id [partitions] TAG_BUFFER 
+        topic_id => UUID
+        partitions => partition_index error_code high_watermark last_stable_offset log_start_offset [aborted_transactions] preferred_read_replica records TAG_BUFFER 
+            partition_index => INT32
+            error_code => INT16
+            high_watermark => INT64
+            last_stable_offset => INT64
+            log_start_offset => INT64
+            aborted_transactions => producer_id first_offset TAG_BUFFER 
+                producer_id => INT64
+                first_offset => INT64
+            preferred_read_replica => INT32
+            records => COMPACT_RECORDS
+    '''
+    throttle_time_ms = int.to_bytes(0, 4, signed=True)
+    error_code = (
+        ERROR_CODE_ZERO 
+        if validate_api_version(parsed_req[REQUEST_API_KEY], parsed_req[REQUEST_API_VERSION]) 
+        else UNSUPPORTED_VALUE
+    )
+    session_id = int.to_bytes(0, 4, signed=True)
+    response_uuid = uuid.uuid4().bytes
+    num_partitions = int.to_bytes(2, 1, signed=True)
+
+    return (
+        throttle_time_ms +
+        error_code +
+        session_id +
+        int.to_bytes(1, 1, signed=True) + #num partitions
+        DEFAULT_TAG_BUFFER
+    )
+    
+
+
 def build_response_fetch(parsed_req):
-    return int.to_bytes(0, 8, signed=True)
+    if parsed_req[REQUEST_API_VERSION] == int.to_bytes(16, 2, signed=True):
+        return build_reponse_fetch_v16(parsed_req)
 
 def build_message_body(parsed_req):
     #TODO build proper messages based on request [api key, api version] 
