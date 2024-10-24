@@ -2,15 +2,9 @@ import socket  # noqa: F401
 import threading
 import uuid
 
-REQUEST_LENGTH = "request_length" 
-REQUEST_API_KEY = "request_api_key" 
-REQUEST_API_VERSION = "request_api_version" 
-CORRELATION_ID = "correlation_id" 
+from app.request_parser import *
+from app.constants import *
 
-# API Keys
-
-FETCH = int.to_bytes(1, 2, signed=True)
-API_VERSION = int.to_bytes(18, 2, signed=True)
 
 UNSUPPORTED_VALUE = int.to_bytes(35, 2, signed=True)
 
@@ -31,11 +25,31 @@ DEFAULT_TAG_BUFFER = int.to_bytes(0, 1, signed=True)
 
 ERROR_CODE_ZERO = int.to_bytes(0, 2, signed=True)
 
+def print_request_debug(req):
+    r = parse(req)
+    headers = r[HEADERS]
+
+    
+    print(
+        f'{REQUEST_LENGTH}: {headers[REQUEST_LENGTH]}\n'+
+        f'{REQUEST_API_KEY}: {headers[REQUEST_API_KEY]}\n' +
+        f'{REQUEST_API_VERSION}: {headers[REQUEST_API_VERSION]}\n' +
+        f'{CLIENT_ID_SIZE}: {headers[CLIENT_ID_SIZE]}\n' +
+        f'{CLIENT_ID}: {headers[CLIENT_ID]}\n'
+    )
+
+    body = r[BODY]
+    print(
+        f'{TOPICS}: {body[TOPICS]}'
+    )
+
 def parse_request(req):
     request_length = req[0:4]
     request_api_key = req[4:6]
     request_api_version	= req[6:8]
     correlation_id = req[8:12]
+
+    print_request_debug(req)
 
     return {
         REQUEST_LENGTH : request_length,
@@ -49,7 +63,7 @@ def validate_api_version(api_key, api_version):
     return api_version >= min_max[0] and api_version <= min_max[1]
 
 def build_response_header(parsed_req):
-    return parsed_req[CORRELATION_ID] + DEFAULT_TAG_BUFFER if parsed_req[REQUEST_API_KEY] == FETCH else parsed_req[CORRELATION_ID]
+    return parsed_req[CORRELATION_ID] if parsed_req[REQUEST_API_KEY] == API_VERSION else parsed_req[CORRELATION_ID] + DEFAULT_TAG_BUFFER
 
 def build_response_api_versions(parsed_req):
     throttle_time_ms = int.to_bytes(0, 4, signed=True)
