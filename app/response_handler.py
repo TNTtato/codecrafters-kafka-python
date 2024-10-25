@@ -86,18 +86,26 @@ def build_response_fetch_v16(api_version, req_body):
     session_id = req_body[SESSION_ID]
     req_topics = req_body[TOPICS]
     num_request = len(req_topics)
-    reponses = int.to_bytes(num_request + 1, 1)
+    responses = int.to_bytes(num_request + 1, 1)
     for topic in req_topics:
-        reponses += topic[TOPIC_ID]
+        responses += topic[TOPIC_ID]
         req_partitons = topic[PARTITIONS]
         num_partitions = len(req_topics)
-        reponses += int.to_bytes(num_partitions + 1, 1)
+        responses += int.to_bytes(num_partitions + 1, 1)
         #for partitions
         idx = 0
         for _ in range(1, num_partitions + 1):
-            reponses += int.to_bytes(idx, 4) #partition_index
-            reponses += UNKWNON_TOPIC #error code
-        reponses += DEFAULT_TAG_BUFFER
+            responses += int.to_bytes(idx, 4) #partition_index
+            responses += UNKWNON_TOPIC #error code
+            responses += int.to_bytes(0, 8) #high_watermark
+            responses += int.to_bytes(0,8) #last_stable_offset
+            responses += int.to_bytes(0,8) #log_start_offset
+            responses += int.to_bytes(0 + 1, 1) #num_aborted_transactions
+            responses += int.to_bytes(0,4) #preferred_read_replica
+            responses += int.to_bytes(1, 1, signed=True) #COMPACT_RECORDS
+            responses += DEFAULT_TAG_BUFFER
+        responses += DEFAULT_TAG_BUFFER
+    responses += DEFAULT_TAG_BUFFER
     
 
     return (
@@ -113,11 +121,13 @@ def build_response_fetch(api_version, req_body):
         return build_response_fetch_v16(api_version, req_body)
 
 def build_reponse_api_versions(api_version, req_body):
-    if api_version == 4:
-        return build_response_api_versions_v4(req_body)
+    #if api_version == 4:
+    return build_response_api_versions_v4(api_version, req_body)
     
 def build_body(api_key, api_version, req_body):
     if api_key == 1:
+        return build_response_fetch(api_version, req_body)
+    if api_key == 18:
         return build_reponse_api_versions(api_version, req_body)
 
 def handle_response(parsed_req: dict[str, dict]):
@@ -130,4 +140,11 @@ def handle_response(parsed_req: dict[str, dict]):
 
     response_headers = build_response_headers(api_key, request_headers)
     response = build_body(api_key, api_version, request_body)
-    
+
+    print(response_headers)
+    print(response)
+
+    full_message = response_headers + response
+    return int.to_bytes(len(full_message), 4) + full_message
+
+
